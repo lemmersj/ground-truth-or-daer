@@ -26,11 +26,11 @@ When I rendered the dataset, there were some issues with reprojecting the 3D key
     
 4. Finetune the model on the PASCAL3D+ Dataset
 
-    python train_reject_model.py --batch_size 512 --dataset pascalVehKP --lr 1e-4 --mturk_csv csv_files/val_x.csv --num_bins 200 --output_dir output --save_epoch 10 --patience 100 --val_csv csv_files/veh_pascal3d_kp_valid.csv --num_epochs 1000  --eval_epoch 1 --start_weights output/gtd-kcve/<run_id>/checkpoint_best_loss.pt --soft_target True
+	    python train_reject_model.py --batch_size 512 --dataset pascalVehKP --lr 1e-4 --mturk_csv csv_files/val_x.csv --num_bins 200 --output_dir output --save_epoch 10 --patience 100 --val_csv csv_files/veh_pascal3d_kp_valid.csv --num_epochs 1000  --eval_epoch 1 --start_weights output/gtd-kcve/<run_id>/checkpoint_best_loss.pt --soft_target True
 
 5. Run the evaluation
 
-    python run_analysis.py --mturk_csv csv_files/test_x.csv --method [daer, distance, entropy, softmax, sampler]  --dir [unique output directory] --gt_csv csv_files/veh_pascal3d_kp_valid.csv [--percentile XX] [--weights output/gtd-kcve/<run_id>/checkpoint_best_loss.pt]
+	    python run_analysis.py --mturk_csv csv_files/test_x.csv --method [daer, distance, entropy, softmax, sampler]  --dir [unique output directory] --gt_csv csv_files/veh_pascal3d_kp_valid.csv [--percentile XX] [--weights output/gtd-kcve/<run_id>/checkpoint_best_loss.pt]
 
 
 
