@@ -18,7 +18,7 @@ Download the pluginnet model we used [here](https://drive.google.com/drive/folde
 
 Add the path to the HSC folder to your pythonpath:
 
-    export PYTHONPATH=/some/path/ground-truth-or-daer/hsc:$PATH
+    export PYTHONPATH=/some/path/ground-truth-or-daer/hsc:$PYTHONPATH
 
 and the path to the pluginnet folder to your path:
 
