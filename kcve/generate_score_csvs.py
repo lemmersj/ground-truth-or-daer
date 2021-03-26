@@ -174,7 +174,8 @@ def main(args):
                                           kpc_vec.cuda().float())
                 else:
                     score = scoring_model(image.cuda().float(),\
-                                          torch.zeros(kp_map_turk.shape).cuda().float(),\
+                                          torch.zeros(
+                                              kp_map_turk.shape).cuda().float(),
                                           kpc_vec.cuda().float())
 
             # Perform sampling methods if applicable.

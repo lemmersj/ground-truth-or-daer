@@ -11,6 +11,7 @@ Example:
         $ python ../../pluginnet/sensitivity.py output/[] test
 """
 import argparse
+import csv
 import os
 import json
 import torch
@@ -18,21 +19,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pluginnet.sun397.testing import create_mode_pe as sun397_create_mode_pe
 from pluginnet.sun397.testing import create_mode_base as sun397_create_mode_base
-import csv
-import torchvision
 
+# pylint: disable=C0103,R0914
 tasks = {'sun397_pe': sun397_create_mode_pe, 'sun397': sun397_create_mode_base}
-
-def reverse_normalize(tensor):
-    out_tensor = torch.tensor(tensor)
-    out_tensor[:, 0, :, :] = out_tensor[:, 0, :, :] * 0.229 
-    out_tensor[:, 1, :, :] = out_tensor[:, 1, :, :] * 0.224 
-    out_tensor[:, 2, :, :] = out_tensor[:, 2, :, :] * 0.225
-    out_tensor[:, 0, :, :] = out_tensor[:, 0, :, :] + 0.485 
-    out_tensor[:, 1, :, :] = out_tensor[:, 1, :, :] + 0.456 
-    out_tensor[:, 2, :, :] = out_tensor[:, 2, :, :] + 0.406 
-
-    return out_tensor
 
 def load_conf(conf_file):
     """Loads the JSON file.
@@ -114,8 +103,6 @@ def main():
     write_list = []
     # Loop through all the test samples, no gradients.
 
-    to_pil = torchvision.transforms.ToPILImage()
-
     with torch.no_grad():
         for dataset_index, (input_data, target) in enumerate(test_loader):
 
@@ -178,7 +165,7 @@ def main():
 
     # save specific output
     with open("evidence_results.csv", 'w') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames = write_list[0].keys())
+        writer = csv.DictWriter(csvfile, fieldnames=write_list[0].keys())
         writer.writeheader()
         for row in write_list:
             writer.writerow(row)
@@ -205,7 +192,7 @@ def main():
     plt.bar(np.arange(7), ae_correct_histogram/ae_correct_histogram.sum()*100)
     plt.xlabel("# labels which cause additional error")
     plt.ylabel("% of Images")
-    plt.savefig("error-dist-correctonly-"+str(args.split)+".eps", bbox_inches="tight")
+    plt.savefig(f"error-dist-correctonly-{args.split}.eps", bbox_inches="tight")
 
 if __name__ == '__main__':
     main()

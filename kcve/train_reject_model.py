@@ -16,19 +16,27 @@ import wandb
 from early_stopping_module import EarlyStopping
 from reject_model import RejectModel
 from datasets.mturk_dataset import mturk_dataset
-from IPython import embed
-import inspect
 
 #pylint:disable=too-many-locals, no-member, too-many-branches
 #pylint:disable=consider-using-enumerate
 def get_cui_weights(location, beta):
+    """Creates a histogram of weights (class imbalance) based on Cui et al.
+
+    Args:
+        location: where the AE counts are stored.
+        beta: The beta of the cui et al loss.
+
+    Returns:
+        The weights for each AE bin.
+    """
     hist = np.load(location)
 
     cui_weights = (1-beta)/(1-np.power(beta, hist))
-    max_weight = cui_weights[np.where(np.isinf(cui_weights)==False)].max()
+    # pylint: disable=C0121
+    max_weight = cui_weights[np.where(np.isinf(cui_weights) == False)].max()
     while max_weight < 0.5:
         cui_weights = cui_weights * 10
-        max_weight = cui_weights[np.where(np.isinf(cui_weights)==False)].max()
+        max_weight = cui_weights[np.where(np.isinf(cui_weights) == False)].max()
 
     cui_weights[np.where(np.isinf(cui_weights))] = max_weight
 
@@ -114,12 +122,14 @@ def main(args):
             with torch.no_grad():
                 eval_step(args=args, rejection_model=rejection_model,
                           task_model=task_model, early_stopping=early_stopping,
-                          epoch=epoch, loader=mturk_loader, weights=loss_weights)
+                          epoch=epoch, loader=mturk_loader,
+                          weights=loss_weights)
 
         # Train.
         train_step(args=args, rejection_model=rejection_model,
                    task_model=task_model, train_loader=train_loader,
-                   optimizer=optimizer, epoch=epoch, scheduler=scheduler, weights=loss_weights)
+                   optimizer=optimizer, epoch=epoch, scheduler=scheduler,
+                   weights=loss_weights)
 
         # save the state every epoch (can always resume from previous epoch)
         torch.save(
@@ -161,7 +171,8 @@ def sampler(value, num_samples=10000):
             samples.mean(dim=1).unsqueeze(dim=1).repeat(
                 1, sorted_samples.shape[1])*.001
 
-def eval_step(args, rejection_model, task_model, early_stopping, epoch, loader, weights=None):
+def eval_step(args, rejection_model, task_model, early_stopping, epoch,
+              loader, weights=None):
     """Do an evaluation step.
 
     Args:
@@ -181,12 +192,6 @@ def eval_step(args, rejection_model, task_model, early_stopping, epoch, loader, 
     task_model.eval()
     rejection_model.eval()
 
-    # The score tensor keeps track of the score at various percentiles
-    # additional error is the last column
-    score_tensor = torch.zeros((0, 7))
-    plot_tensor = torch.zeros((0, 3))
-    predictor_correct_count = 0
-
     loss_sum = 0
     bce_loss_sum = 0
     cx_loss_sum = 0
@@ -195,7 +200,7 @@ def eval_step(args, rejection_model, task_model, early_stopping, epoch, loader, 
     #        kp_map_turk, kp_class, _, _, _, _, _)\
     #        in enumerate(loader):
     for _ in range(args.num_evals):
-        for i, (images, azim, elev, tilt, kp_class, obj_cls, kp_map_gt, \
+        for _, (images, azim, elev, tilt, kp_class, obj_cls, kp_map_gt, \
                 kp_map_turk, _, _, _, _) in enumerate(loader):
             # Move everything to CUDA.
             images = images.cuda().float()
@@ -207,14 +212,10 @@ def eval_step(args, rejection_model, task_model, early_stopping, epoch, loader, 
                 rejection_model_output = rejection_model(
                     images, kp_map_turk, kp_class)
             else:
-                rejection_model_output = rejection_model(images,
+                rejection_model_output = rejection_model(
+                    images,
                     torch.zeros(kp_map_turk.shape).to(kp_map_turk.device),
                     kp_class)
-
-            cx_softmaxed = rejection_model_output['output_cx'].softmax(dim=1)
-            values = torch.arange(
-                cx_softmaxed[0, :].shape[0]).unsqueeze(0).repeat(
-                    cx_softmaxed.shape[0], 1).cuda().float()
 
             # Get the outputs
             gt_chcnn_out = task_model(images, kp_map_gt, kp_class, obj_cls)
@@ -252,7 +253,9 @@ def eval_step(args, rejection_model, task_model, early_stopping, epoch, loader, 
 
             # Weight the loss if using the cui loss.
             if args.cui_loss:
-                targets = rejection_model.get_target(additional_error, rejection_model_output['output_cx'].shape[1])
+                targets = rejection_model.get_target(
+                    additional_error,
+                    rejection_model_output['output_cx'].shape[1])
                 step_weights = torch.tensor(weights[targets]).to(
                     loss['bce_loss'].device).to(
                         loss['bce_loss'].dtype)
@@ -377,7 +380,8 @@ def train_step(args, rejection_model, task_model, train_loader,\
             rejection_model_output = rejection_model(
                 images, kp_map_other, kp_class)
         else:
-            rejection_model_output = rejection_model(images,
+            rejection_model_output = rejection_model(
+                images,
                 torch.zeros(kp_map_other.shape).to(kp_map_other.device),
                 kp_class)
 
@@ -425,7 +429,8 @@ def train_step(args, rejection_model, task_model, train_loader,\
             loss['cx_loss'] = (additional_error != 0).float()*loss['cx_loss']
         # Weight the loss if using the cui loss.
         if args.cui_loss:
-            targets = rejection_model.get_target(additional_error, rejection_model_output['output_cx'].shape[1])
+            targets = rejection_model.get_target(
+                additional_error, rejection_model_output['output_cx'].shape[1])
             step_weights = torch.tensor(weights[targets.detach().cpu()]).to(
                 loss['bce_loss'].device).to(
                     loss['bce_loss'].dtype)
@@ -466,8 +471,6 @@ def train_step(args, rejection_model, task_model, train_loader,\
         # Save the loss.
         loss_sum += loss.item()
 
-    where_not_zero = torch.where(plot_tensor[:, 2] != 0)
-    where_zero = torch.where(plot_tensor[:, 2] == 0)
     # Now calculate the AUAER.
     numpy_for_ear = tensor_for_ear.numpy()
     numpy_for_ear = numpy_for_ear[numpy_for_ear[:, 0].argsort()]
@@ -491,21 +494,6 @@ def train_step(args, rejection_model, task_model, train_loader,\
 
     # multiply by width at every point and sum
     au_ar_perfect = (allpoints_arisk_perfect * 1/cumulative_sum.shape[0]).sum()
-
-    where_not_zero = torch.where(plot_tensor[:, 2] != 0)
-    where_zero = torch.where(plot_tensor[:, 2] == 0)
-    '''fig_regression = plt.figure(0)
-    cur_ax = fig_regression.gca()
-    cur_ax.scatter(plot_tensor[where_not_zero[0], 1],
-                   plot_tensor[where_not_zero[0], 2])
-    cur_ax.set_xlim(0, 200)
-    cur_ax.set_ylim(0, 200)
-
-    fig_classification = plt.figure(1)
-    cur_ax = fig_classification.gca()
-    cur_ax.boxplot([plot_tensor[where_zero[0], 0].numpy(),\
-            plot_tensor[where_not_zero[0], 0].numpy()])
-    cur_ax.set_ylim(0, 1)'''
 
     # Save all this to WandB
     log_dict = {'train/au_ar':au_ar, 'train/perfect_au_ar':au_ar_perfect,

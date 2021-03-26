@@ -126,7 +126,17 @@ class RejectModel(nn.Module):
 
         return self.parameters()
 
+    # pylint: disable=R0201
     def get_target(self, additional_error, num_bins):
+        """Returns the softmax target based on the additional error and # bins
+
+        Args:
+            additional_error: The additional error.
+            num_bins: How many bins there are.
+
+        Returns:
+            The long target for cx loss.
+        """
         # Turn the additional error into an int, and place zero at the center
         # of the softmax output (so it can predict positive and negative
         # additional error.)

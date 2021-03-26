@@ -5,10 +5,10 @@ import argparse
 import torch
 import torchvision
 import numpy as np
-import matplotlib.pyplot as plt
-#import wandb
 from util import Paths, get_data_loaders, metrics
 from models import clickhere_cnn, render4cnn
+
+#pylint: disable=R0914
 
 def main(args):
     """Setup for heatmap generation.
@@ -28,13 +28,13 @@ def main(args):
 
     # Load the dataset. Can switch between train or val loaders here.
     train_loader, valid_loader = get_data_loaders(dataset=args.dataset,
-                                       batch_size=1,
-                                       num_workers=16,
-                                       return_kp=True)
+                                                  batch_size=1,
+                                                  num_workers=16,
+                                                  return_kp=True)
     if args.split == "train":
         loader = train_loader
     if args.split == "val":
-        loader = val_loader
+        loader = valid_loader
     # create the task model.
     model = clickhere_cnn(render4cnn(), weights_path=Paths.clickhere_weights)
     # train/evaluate on GPU
@@ -122,7 +122,6 @@ def upsample(heatmap, out_dim):
     heatmap_large = torch.zeros((out_dim, out_dim))
     for x_coord in range(out_dim):
         for y_coord in range(out_dim):
-            
             x_scaled = (x_coord/out_dim)*46
             x_scaled_floored = int(np.floor(x_scaled))
             x_scaled_roofed = x_scaled_floored+1
@@ -130,7 +129,6 @@ def upsample(heatmap, out_dim):
             y_scaled = (y_coord/out_dim)*46
             #y_scaled_rounded = int(np.round(y_scaled))
 
-            #heatmap_large[x_coord, y_coord] = heatmap[x_scaled_rounded, y_scaled_rounded]
             y_scaled_floored = int(np.floor(y_scaled))
             y_scaled_roofed = y_scaled_floored+1
             # bilinear interpolation
@@ -186,7 +184,7 @@ def eval_step(model, data_loader, args):
             continue
         # relgeodesic is the last one to be created
         if os.path.exists(os.path.join(
-            args.dir, key_uid[0].split("/")[-1]+".relgeodesicheatmap")):
+                args.dir, key_uid[0].split("/")[-1]+".relgeodesicheatmap")):
             print(f"{i} exists")
             continue
         # start_idx tells us which kp map we're starting with.
@@ -229,7 +227,8 @@ def eval_step(model, data_loader, args):
                     break
         kp_46 = np.floor(np.array(
             [gt_kp[0].item() * 46, gt_kp[1].item() * 46])).astype(int)
-        heatmap_rel_geodesic = heatmap_geodesic - heatmap_geodesic[kp_46[0], kp_46[1]]
+        heatmap_rel_geodesic = heatmap_geodesic - \
+                heatmap_geodesic[kp_46[0], kp_46[1]]
         heatmap_geodesic = upsample(heatmap_geodesic, images.shape[2])
         heatmap_identity = upsample(heatmap_identity, images.shape[2])
         heatmap_rel_geodesic = upsample(heatmap_rel_geodesic, images.shape[2])

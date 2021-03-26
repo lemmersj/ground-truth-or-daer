@@ -23,7 +23,7 @@ from torchvision.models import resnet18
 import wandb
 from pluginnet.sun397.testing import create_mode_pe as sun397_create_mode_pe
 from pluginnet.sun397.testing import create_mode_base as sun397_create_mode_base
-from get_target_tensor import reverse_target_tensor, get_target_tensor
+from get_target_tensor import reverse_target_tensor
 
 #pylint: disable=invalid-name, no-member
 
@@ -60,7 +60,6 @@ def train_step(task_model, rejection_model, data_loader, optimizer,\
     """
     # values tracked per-epoch
     running_loss = 0 # loss
-    correct_classifications = 0 # classifier accuracy
     num_samples = 0 # number of samples (for averaging)
 
     # Losses for classifier and additional error, respectively.
@@ -169,12 +168,12 @@ def val_step(task_model, rejection_model, data_loader, args, device="cuda"):
     Returns:
         Mean loss, acc, and AU-AER.
     """
+    del args
     bce_loss = torch.nn.BCELoss(reduction="none")
 
     # track the running loss for logging
     running_loss = 0
     num_samples = 0
-    correct_classifications = 0
 
     # save scores and additional error
     scores = torch.zeros(0)
@@ -208,7 +207,7 @@ def val_step(task_model, rejection_model, data_loader, args, device="cuda"):
 
             # Separate the sigmoided (for loss) and weighted (for AUAER)
             rejection_model_output_only = torch.sigmoid(rejection_model_output)
-            
+
             # Save information for the amae calc
             scores = torch.cat((scores, rejection_model_output.cpu()))
             additional_errors = torch.cat(
