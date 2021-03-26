@@ -1,10 +1,10 @@
-"""Test a trained rejection model on the plugin network.
+"""Test a trainedrejection model on the plugin network.
 
 This script uses an already trained resnet-based architecture for predicting
 additional error on the fine-grained classification task with partial evidence,
 as discussed by Koperski et al. in "Plugin Networks for Inference under
 Partial Evidence." It tests when the seed is provided by a pretrained
-classifier. The rejection model does not have the classifier component.
+classifier.
 
 Example:
     Similar to the instructions in the readme, test_rejection.py should be run
@@ -125,12 +125,7 @@ def perform_test_model(task_model, rejection_model, guess_model,\
         additional_error = torch.nn.functional.relu(
             correct_evidence_correct - guess_evidence_correct)
 
-        # Perform a forward pass of the rejection model.
-        rejection_model_output = torch.sigmoid(rejection_model(image)[:, :7])
-
-        # and use only the relevant outputs.
-        rejection_model_output = rejection_model_output[
-            torch.arange(guess_model_output.shape[0]), guess_model_output]
+        rejection_model_output = rejection_model(image)[:, 0]
 
         # Save information for the au-aer calc
         scores = torch.cat((scores, rejection_model_output.cpu()))
@@ -164,14 +159,9 @@ def main():
     parser.add_argument('--guess_weights', required=True, type=str)
     parser.add_argument('--rejection_weights', required=True, type=str)
     parser.add_argument('--coarse_idx', required=False, type=int, default=-1)
-    parser.add_argument('--important_only', type=str, default="False",\
-                       help="Only train on examples where there is"\
-                        "additional error.")
+    parser.add_argument('--run_num', required=False, type=int, default=0)
     args = parser.parse_args()
 
-    # Unfortunately, have to do this for the gridsearch.
-    args.important_only = (
-        args.important_only[0] == "T" or args.important_only[0] == "t")
     # Setup
     # Set the device.
     device = 'cpu'
@@ -205,11 +195,19 @@ def main():
     wandb.init(project="gtd-hsc", config=args.__dict__,)
 
     with torch.no_grad():
+        #coarse_entropy_return = perform_test_coarse_entropy(
+        #    task_model, guess_model, test_loader, device=device)
+        #print("Coarse Entropy Performance: ")
+        #print(coarse_entropy_return['au_aer'])
+        #print("---")
+        #wandb.log({'Coarse Entropy': coarse_entropy_return['au_aer']})
+        #exit()
+
         # Trained Rejection Model
         model_return = perform_test_model(
             task_model, rejection_model, guess_model, test_loader,\
             device=device)
-        print("Trained Rejection Model: ")
+        print("Blind Rejection Model: ")
         print(model_return['au_aer'])
         print("---")
 

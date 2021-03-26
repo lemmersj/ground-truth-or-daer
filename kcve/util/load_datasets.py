@@ -24,7 +24,6 @@ def get_data_loaders(
     returns:
         A dataloader corresponding to the given dataset parameters.
     """
-
     image_size = 227
     train_transform = transforms.Compose([transforms.ToTensor(),
                                           transforms.Normalize(

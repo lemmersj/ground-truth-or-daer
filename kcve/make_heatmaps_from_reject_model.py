@@ -5,10 +5,14 @@ import argparse
 import torch
 import torchvision
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 #import wandb
 from util import Paths, get_data_loaders, metrics
 from models import clickhere_cnn, render4cnn
+from reject_model import RejectModel
+from IPython import embed
+from datasets.mturk_dataset import mturk_dataset
 
 def main(args):
     """Setup for heatmap generation.
@@ -27,16 +31,21 @@ def main(args):
         pass
 
     # Load the dataset. Can switch between train or val loaders here.
-    train_loader, valid_loader = get_data_loaders(dataset=args.dataset,
-                                       batch_size=1,
-                                       num_workers=16,
-                                       return_kp=True)
-    if args.split == "train":
+    #train_loader, valid_loader = get_data_loaders(dataset=args.dataset,
+    #                                   batch_size=1,
+    #                                   num_workers=16,
+    #                                   return_kp=True)
+    loader = torch.utils.data.DataLoader(
+        dataset=mturk_dataset(
+            args.val_csv, args.mturk_csv),
+        batch_size=1, shuffle=False, num_workers=16)
+    '''if args.split == "train":
         loader = train_loader
     if args.split == "val":
-        loader = val_loader
+        loader = val_loader'''
     # create the task model.
-    model = clickhere_cnn(render4cnn(), weights_path=Paths.clickhere_weights)
+    model = RejectModel(200)
+    model.load_state_dict(torch.load(args.weights))
     # train/evaluate on GPU
     model.cuda()
 
@@ -175,9 +184,8 @@ def eval_step(model, data_loader, args):
 
     # Loop through whole dataset.
     batch_size = 256
-    for i, (images, azim_label, elev_label, tilt_label, obj_class,\
-            _, _, kp_class, key_uid,\
-            gt_kp, _, _, _) in enumerate(data_loader):
+    for i, (images, azim_label, elev_label, tilt_label, kp_class,\
+            obj_cls, kp_map_gt, kp_map_turk, _, img_path, gt_kp, turk_kp_loc) in enumerate(data_loader):
         print(i/len(data_loader))
         #wandb.log({"hist_gen_pct":float(i)/len(data_loader)})
         # In my use case, having gt is probably fine, even though I think it
@@ -185,71 +193,61 @@ def eval_step(model, data_loader, args):
         if i < args.start_idx or i > args.end_idx:
             continue
         # relgeodesic is the last one to be created
-        if os.path.exists(os.path.join(
+        '''if os.path.exists(os.path.join(
             args.dir, key_uid[0].split("/")[-1]+".relgeodesicheatmap")):
             print(f"{i} exists")
-            continue
+            continue'''
         # start_idx tells us which kp map we're starting with.
         start_idx = 0
-        heatmap_geodesic = torch.zeros((maps.shape[1], maps.shape[2]))
         heatmap_identity = torch.zeros((maps.shape[1], maps.shape[2]))
         with torch.no_grad():
             while True:
                 list_len = min(batch_size, maps.shape[0]-start_idx)
                 images_repeated = images.repeat(list_len, 1, 1, 1)
                 these_maps = maps[start_idx:start_idx+list_len, :, :]
-                azim, elev, tilt = model(images_repeated.cuda(),
+                score = model(images_repeated.cuda(),
                                          these_maps.cuda(),
-                                         kp_class.repeat(list_len, 1).cuda(),
-                                         obj_class.repeat(list_len).cuda())
+                                         kp_class.repeat(list_len, 1).float().cuda())
+                cx_softmaxed = score['output_cx'].softmax(dim=1)
+                values = torch.arange(cx_softmaxed[0, :].shape[0]).cuda().float()
+                ae_pred = (values*cx_softmaxed).sum(dim=1) * score['output_bce']
                 batch_idx = 0
                 for pair_idx in range(start_idx, start_idx+list_len):
-                    heatmap_geodesic[pairs[pair_idx][0].item(),\
-                                     pairs[pair_idx][1].item()] =\
-                            metrics.compute_angle_dists([
-                                azim[batch_idx, :].argmax().float()\
-                                .unsqueeze(0), elev[batch_idx, :].argmax()\
-                                .float().unsqueeze(0), tilt[batch_idx, :]\
-                                .argmax().float().unsqueeze(0)],\
-                                [azim_label, elev_label,\
-                                 tilt_label])
                     heatmap_identity[pairs[pair_idx][0].item(),\
                                      pairs[pair_idx][1].item()] =\
-                            metrics.compute_dist_from_eye([
-                                azim[batch_idx, :].argmax().float()\
-                                .unsqueeze(0), elev[batch_idx, :].argmax()\
-                                .float().unsqueeze(0), tilt[batch_idx, :]\
-                                .argmax().float().unsqueeze(0)],\
-                                [azim_label, elev_label,\
-                                 tilt_label])
+                            ae_pred[batch_idx]
                     batch_idx += 1
                 start_idx += batch_size
                 # If start is past the end, move to the next sample.
                 if start_idx >= maps.shape[0]:
                     break
-        kp_46 = np.floor(np.array(
-            [gt_kp[0].item() * 46, gt_kp[1].item() * 46])).astype(int)
-        heatmap_rel_geodesic = heatmap_geodesic - heatmap_geodesic[kp_46[0], kp_46[1]]
-        heatmap_geodesic = upsample(heatmap_geodesic, images.shape[2])
-        heatmap_identity = upsample(heatmap_identity, images.shape[2])
-        heatmap_rel_geodesic = upsample(heatmap_rel_geodesic, images.shape[2])
+        heatmap_identity = upsample(heatmap_identity, images.shape[2])/200
 
-        torch.save(
-            heatmap_geodesic, os.path.join(
-                args.dir, key_uid[0].split("/")[-1]+".geodesicheatmap"))
+        image_name = img_path[0].split("/")[-1] 
+        filename = f"{image_name}-{kp_class.argmax().item()}-{azim_label.item()}-{elev_label.item()}-{tilt_label.item()}"
         torch.save(
             heatmap_identity, os.path.join(
-                args.dir, key_uid[0].split("/")[-1]+".identityheatmap"))
-        torch.save(
-            heatmap_rel_geodesic, os.path.join(
-                args.dir, key_uid[0].split("/")[-1]+".relgeodesicheatmap"))
+                args.dir, filename+".identityheatmap"))
+        human_image = transform_image(images.squeeze())
+        kp_227 = np.floor(np.array([gt_kp[0].item() * 227, gt_kp[1].item() * 227])).astype(int)
+        plt.ioff()
+        _, ax1 = plt.subplots(1, 1)
+        ax1.imshow(human_image)
+        ax1.add_artist(plt.Circle((kp_227[0].item(), kp_227[1].item()), 5, color='green', ec='black'))
+        heatmap_plot = ax1.imshow(heatmap_identity.transpose(0, 1), cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["green","yellow","red"]))
+        heatmap_plot.set_alpha(0.8)
+        plt.title("Predicted Additional Error")
+        plt.axis('off')
+        plt.savefig(os.path.join(args.dir, filename+"-predicted.pdf"), bbox_inches="tight")
+        plt.close()
 
 if __name__ == '__main__':
-    #plt.switch_backend('Agg')
+    plt.switch_backend('Agg')
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument('--dir', type=str, required=True)
-    PARSER.add_argument('--dataset', type=str, required=True)
-    PARSER.add_argument('--split', type=str, required=True)
+    PARSER.add_argument('--val_csv', type=str, required=True)
+    PARSER.add_argument('--mturk_csv', type=str, required=True)
+    PARSER.add_argument('--weights', type=str, required=True)
     PARSER.add_argument('--start_idx', type=int, default=0)
     PARSER.add_argument('--end_idx', type=int, default=1e6)
 

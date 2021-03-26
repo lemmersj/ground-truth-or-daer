@@ -126,21 +126,10 @@ class RejectModel(nn.Module):
 
         return self.parameters()
 
-    def loss(self, network_out, additional_error, use_soft_target):
-        """Calculate the loss
-
-        Args:
-            network_out: The output of the network.
-            additional_error: The actual additional error (the target).
-
-        Returns:
-            Cross-entropy error for every sample in the batch.
-        """
-
+    def get_target(self, additional_error, num_bins):
         # Turn the additional error into an int, and place zero at the center
         # of the softmax output (so it can predict positive and negative
         # additional error.)
-        num_bins = network_out['output_cx'].shape[1]
         target = torch.floor(additional_error) + num_bins//2
 
         # If the additional error is greater than the top bin, put it in the
@@ -154,6 +143,21 @@ class RejectModel(nn.Module):
         # Convert the target to a long.
         target = target.long()
 
+        return target
+
+    def loss(self, network_out, additional_error, use_soft_target):
+        """Calculate the loss
+
+        Args:
+            network_out: The output of the network.
+            additional_error: The actual additional error (the target).
+
+        Returns:
+            Cross-entropy error for every sample in the batch.
+        """
+
+        num_bins = network_out['output_cx'].shape[1]
+        target = self.get_target(additional_error, num_bins)
         # Calculate cross entropy loss
         softmaxed_cx_output = torch.softmax(network_out['output_cx'], dim=1)
 

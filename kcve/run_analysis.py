@@ -17,9 +17,11 @@ PARSER.add_argument('--bins', type=int, default=200)
 PARSER.add_argument('--percentile', type=int, default=-1)
 PARSER.add_argument("--error", action="store_true", default=False)
 PARSER.add_argument("--random", type=str, default="false")
+PARSER.add_argument("--blind", type=str, default="false")
 ARGS = PARSER.parse_args()
 
 ARGS.random = strtobool(ARGS.random)
+ARGS.blind = strtobool(ARGS.blind)
 ARGS.outfile = ARGS.dir+"/scores.csv"
 ARGS.hist_test = ARGS.dir+"/overall_histogram.hist"
 

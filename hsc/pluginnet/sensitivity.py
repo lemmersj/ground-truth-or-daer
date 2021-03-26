@@ -119,8 +119,8 @@ def main():
     with torch.no_grad():
         for dataset_index, (input_data, target) in enumerate(test_loader):
 
-            image_to_save = to_pil(reverse_normalize(input_data[1]).squeeze())
-            image_to_save.save("out_images/"+str(dataset_index)+".jpg")
+            #image_to_save = to_pil(reverse_normalize(input_data[1]).squeeze())
+            #image_to_save.save("out_images/"+str(dataset_index)+".jpg")
             # Move information to the device.
             evidence = input_data[0].to(device)
             image = input_data[1].to(device)

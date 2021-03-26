@@ -168,9 +168,14 @@ def main(args):
             and args.method != "distance" and args.method != "best-loss"\
             and args.method != "best-geodesic" and args.method != "random"\
             and args.method != "softmax":
-                score = scoring_model(image.cuda().float(),\
-                                      kp_map_turk.cuda().float(),\
-                                      kpc_vec.cuda().float())
+                if not args.blind:
+                    score = scoring_model(image.cuda().float(),\
+                                          kp_map_turk.cuda().float(),\
+                                          kpc_vec.cuda().float())
+                else:
+                    score = scoring_model(image.cuda().float(),\
+                                          torch.zeros(kp_map_turk.shape).cuda().float(),\
+                                          kpc_vec.cuda().float())
 
             # Perform sampling methods if applicable.
             if args.method == "daer":
