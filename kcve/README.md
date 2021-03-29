@@ -18,7 +18,11 @@ When I rendered the dataset, there were some issues with reprojecting the 3D key
     python check_kp_locs.py /path/to/dataset/root
 
 ## Training the seed rejection model
-1. Download the [ClickHere CNN weights](https://drive.google.com/drive/folders/1IwUOCCwhfAG0mGOysIAL0RCvN8rsJ-Z0?usp=sharing) to the model_weights folder. CH-CNN can also be trained using the [original PyTorch code](https://github.com/mbanani/pytorch-clickhere-cnn).
+1. Download the [ClickHere CNN weights](https://drive.google.com/drive/folders/1IwUOCCwhfAG0mGOysIAL0RCvN8rsJ-Z0?usp=sharing) to the model_weights folder. You can also use gdown:
+
+    gdown --id 1VG6eMaKo9JQhQoA4b3fk0Z7jYAkYBW5A
+
+CH-CNN can also be trained using the [original PyTorch code](https://github.com/mbanani/pytorch-clickhere-cnn).
 2. Set paths in util/Paths.py
 3. Train the model on synthetic and real data:
 
@@ -26,11 +30,21 @@ When I rendered the dataset, there were some issues with reprojecting the 3D key
     
 4. Finetune the model on the PASCAL3D+ Dataset
 
-	    python train_reject_model.py --batch_size 512 --dataset pascalVehKP --lr 1e-4 --mturk_csv csv_files/val_x.csv --num_bins 200 --output_dir output --save_epoch 10 --patience 100 --val_csv csv_files/veh_pascal3d_kp_valid.csv --num_epochs 1000  --eval_epoch 1 --start_weights output/gtd-kcve/<run_id>/checkpoint_best_loss.pt --soft_target True
+    python train_reject_model.py --batch_size 512 --dataset pascalVehKP --lr 1e-4 --mturk_csv csv_files/val_x.csv --num_bins 200 --output_dir output --save_epoch 10 --patience 100 --val_csv csv_files/veh_pascal3d_kp_valid.csv --num_epochs 1000  --eval_epoch 1 --start_weights output/gtd-kcve/<run_id>/checkpoint_best_loss.pt --soft_target True
 
-5. Run the evaluation
+Additionally, the no-seed, correctness only, and regression only ablations can be run by appending ``--blind True``, ``bce_only True``, ``--cx_only True`` to the arguments list at both stages.
 
-	    python run_analysis.py --mturk_csv csv_files/test_x.csv --method [daer, distance, entropy, softmax, sampler]  --dir [unique output directory] --gt_csv csv_files/veh_pascal3d_kp_valid.csv [--percentile XX] [--weights output/gtd-kcve/<run_id>/checkpoint_best_loss.pt]
+## Running the Evaluation
 
+    python run_analysis.py --mturk_csv csv_files/test_x.csv --method [daer, distance, entropy, softmax, sampler]  --dir [unique output directory] --gt_csv csv_files/veh_pascal3d_kp_valid.csv [--percentile XX] [--weights output/gtd-kcve/<run_id>/checkpoint_best_loss.pt]
 
+Additionally, the no-seed, correctness only, and regression only ablations can be run by appending ``--blind True``, ``bce_only True``, ``--cx_only True`` to the arguments list at both stages.
 
+## Generating Heatmaps
+#### Heatmaps of the task model response:
+
+    python make_heatmap_files.py --dir [train, val]_heatmap_files --dataset pascalVehKP --split [train, val]
+
+#### Heatmaps of the rejection model response:
+
+    python make heatmaps_from_reject_model.py --dir model_pred_heatmaps --val_csv csv_files/veh_pascal3d_kp_valid.csv --mturk_csv csv_files/test_[#].csv --weights [path_to_weights]/checkpoint_best_loss.pt

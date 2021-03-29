@@ -1,4 +1,4 @@
-# Hierarchical Scene Classification
+erarchical Scene Classification
 The code for hierarchical scene classification is based on the Plugin-Network architecture by Koperski et al. available [here](https://github.com/tooploox/plugin-networks).
 
 ## Setting up the workspace
@@ -14,11 +14,18 @@ Included in this folder is an exported conda environment (environment.yml). Use 
 Run the shell script to download SUN397:
 
     ./download_environment.sh
-Download the pluginnet model we used [here](https://drive.google.com/drive/folders/1IwUOCCwhfAG0mGOysIAL0RCvN8rsJ-Z0?usp=sharing) and extract it to workspace/sun397/output/pretrained_pluginnet, or train it using the instructions on the [original repository](https://github.com/tooploox/plugin-networks).
+Download the pluginnet model we used [here](https://drive.google.com/drive/folders/1IwUOCCwhfAG0mGOysIAL0RCvN8rsJ-Z0?usp=sharing) or through [gdown](https://pypi.org/project/gdown/) with the command:
+`gdown --id 1P-m-6KtDJE-3vIGohbB1Xrb4-3i85uNY`
+
+and extract it to workspace/sun397/output/pretrained_pluginnet:
+
+    unzip pretrained_pluginnet.zip -d workspace
+
+You can also train pluginnet using the instructions on the [original repository](https://github.com/tooploox/plugin-networks).
 
 Add the path to the HSC folder to your pythonpath:
 
-    export PYTHONPATH=/some/path/ground-truth-or-daer/hsc:$PYTHONPATH
+    export PYTHONPATH=/some/path/ground-truth-or-daer/hsc:$PATH
 
 and the path to the pluginnet folder to your path:
 
@@ -43,14 +50,20 @@ From the workspace/sun397 folder:
 
     ../../pluginnet/train_coarse_classifier.py output/pretrained_pluginnet --lr 1e-4
 
+### No Seed
+    python ../../pluginnet/train_rejection_blind.py --model_dir output/pretrained_pluginnet/ --lr 1e-4
+
 Fine entropy and coarse entropy rely on the output of the classifier, and do not have trained models specifically for rejection.
 
 ## Testing Rejection Model
 From the workspace/sun397 folder.
 ### Full DAER, Entropy, Optimal, Softmax Response
 
-    python ../../pluginnet/test_rejection.py --model_dir output/pretrained_pluginnet/ --guess_weights output/gtd-hsc/[run_id]/model_best_acc.weights --rejection_weights output/gtd-hsc/
+    python ../../pluginnet/test_rejection.py --model_dir output/pretrained_pluginnet/ --guess_weights output/gtd-hsc/[run_id]/model_best_acc.weights --rejection_weights output/gtd-hsc/[run_id]/model_best_auaer.weights
 
 ### Regression Only
 
-    python ../../pluginnet/test_rejection_no_classifier.py --model_dir output/pretrained_pluginnet/ --guess_weights output/gtd-hsc/[run_id]/model_best_acc.weights --rejection_weights output/gtd-hsc/
+    python ../../pluginnet/test_rejection_no_classifier.py --model_dir output/pretrained_pluginnet/ --guess_weights output/gtd-hsc/[run_id]/model_best_acc.weights --rejection_weights output/gtd-hsc/[run_id]/model_best_auaer.weights
+### Regression Only
+
+    python ../../pluginnet/test_rejection_blind.py --model_dir output/pretrained_pluginnet/ --guess_weights output/gtd-hsc/[run_id]/model_best_acc.weights --rejection_weights output/gtd-hsc/[run_id]/model_best_auaer.weights
