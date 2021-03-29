@@ -1,4 +1,4 @@
-erarchical Scene Classification
+# Herarchical Scene Classification
 The code for hierarchical scene classification is based on the Plugin-Network architecture by Koperski et al. available [here](https://github.com/tooploox/plugin-networks).
 
 ## Setting up the workspace
