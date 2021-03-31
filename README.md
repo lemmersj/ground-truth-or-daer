@@ -1,5 +1,5 @@
 # Ground-Truth or DAER
-This is the repository for the paper titled Ground-Truth or DAER. The work is divided into two individual tasks, [hierarchical scene classification](https://github.com/lemmersj/ground-truth-or-daer/tree/main/hsc) and [keypoint-conditioned viewpoint estimation](https://github.com/lemmersj/ground-truth-or-daer/tree/main/kcve), stored in their respective folders in the repositories.
+This is the repository for the paper titled [Ground-Truth or DAER: Selective Re-query of Secondary Information](https://arxiv.org/abs/2009.07414). The work is divided into two individual tasks, [hierarchical scene classification](https://github.com/lemmersj/ground-truth-or-daer/tree/main/hsc) and [keypoint-conditioned viewpoint estimation](https://github.com/lemmersj/ground-truth-or-daer/tree/main/kcve), stored in their respective folders in the repositories.
 
 The hierarchical scene classification code is based on the repository for the WACV paper "Plugin Networks for Inference under Partial Evidence ([paper](https://openaccess.thecvf.com/content_WACV_2020/papers/Koperski_Plugin_Networks_for_Inference_under_Partial_Evidence_WACV_2020_paper.pdf), [code](https://github.com/tooploox/plugin-networks))."
 
